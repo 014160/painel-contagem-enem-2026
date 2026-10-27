@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel Carrossel em Tempo Real — Provão Paulista e ENEM 2026</title>
+<style>
+  :root {
+    --navy: #0c1b38;
+    --blue: #1a52a0;
+    --cyan: #26c3dc;
+    --gold: #ffbe37;
+    --green: #25ab80;
+    --red: #da3948;
+    --white: #fff;
+    --pale: #e6f1ff;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 100%; height: 100%; background: var(--navy); color: var(--white); font-family: Arial, Helvetica, sans-serif; overflow: hidden; }
+  .stage { width: 100vw; height: 100vh; position: relative; }
+  .slide {
+    position: absolute; inset: 0; padding: 0 5.8vw 3vh;
+    display: flex; flex-direction: column; opacity: 0; visibility: hidden;
+    transition: opacity .6s ease; background: var(--navy);
+  }
+  .slide.active { opacity: 1; visibility: visible; }
+  .header {
+    height: 16.7vh; min-height: 92px; margin: 0 -5.8vw;
+    padding: 0 5.8vw; display: flex; align-items: center; gap: 1.5vw;
+    background: #0c1b38; border-bottom: 3px solid rgba(255,255,255,.08);
+  }
+  .icon {
+    width: clamp(55px, 6.4vw, 100px); height: clamp(55px, 6.4vw, 100px);
+    flex: 0 0 auto; display: grid; place-items: center;
+  }
+  .icon svg { width: 100%; height: 100%; }
+  .header-copy { display: flex; flex-direction: column; gap: .7vh; }
+  .header h1 { margin: 0; font-size: clamp(22px, 3.0vw, 48px); line-height: 1.05; font-weight: 800; letter-spacing: .02em; }
+  .header .tagline { font-size: clamp(10px, 1.05vw, 17px); color: var(--cyan); font-weight: 700; letter-spacing: .15em; }
+  .content { flex: 1; display: flex; flex-direction: column; justify-content: center; min-height: 0; }
+  .title { font-size: clamp(26px, 3.2vw, 52px); font-weight: 800; line-height: 1.08; margin: 0 0 1.5vh; max-width: 85%; }
+  .subtitle { font-size: clamp(14px, 1.5vw, 24px); color: var(--pale); margin-bottom: 3.2vh; }
+  .decor { position: absolute; right: 6.2vw; top: 22vh; width: 11vw; height: 11vw; max-width: 170px; max-height: 170px; border-radius: 50%; background: var(--accent); opacity: .9; }
+  .decor:before { content:""; position:absolute; width: 30%; height:30%; right:-15%; bottom:0; border-radius:50%; background:var(--cyan); }
+  .decor:after { content:""; position:absolute; width:17%; height:17%; left:-12%; bottom:-18%; border-radius:50%; background:var(--gold); }
+  .cards { display: grid; grid-template-columns: .86fr 1fr; gap: 3vw; align-items: stretch; }
+  .count-card, .date-card { min-height: 34vh; border-radius: 22px; display:flex; flex-direction:column; align-items:center; justify-content:center; padding: 2vh 2vw; }
+  .count-card { background: var(--accent); text-align:center; }
+  .count-label { font-size: clamp(18px, 1.9vw, 30px); font-weight: 800; letter-spacing: .14em; }
+  .number { font-size: clamp(58px, 8.8vw, 140px); line-height: .98; font-weight: 900; font-variant-numeric: tabular-nums; margin: 1.4vh 0 .7vh; }
+  .days { font-size: clamp(20px, 2.3vw, 36px); font-weight: 800; letter-spacing: .15em; }
+  .time-units { display: flex; justify-content: center; gap: clamp(8px, 1.4vw, 22px); margin-top: 1.5vh; }
+  .time-unit { min-width: clamp(58px, 5.5vw, 88px); padding: .8vh .7vw .9vh; border: 2px solid rgba(12,27,56,.35); border-radius: 10px; background: rgba(12,27,56,.24); display: flex; flex-direction: column; align-items: center; justify-content:center; }
+  .time-value { font-size: clamp(20px, 2.3vw, 36px); line-height: 1; font-weight: 900; font-variant-numeric: tabular-nums; }
+  .time-label { margin-top: .65vh; font-size: clamp(10px, .9vw, 15px); font-weight: 900; letter-spacing: .08em; }
+  .clock { display: none; }
+  .date-card { background: var(--white); color: var(--navy); text-align:center; }
+  .date-label { color: var(--blue); font-size: clamp(15px, 1.6vw, 25px); font-weight: 800; letter-spacing: .1em; }
+  .date { font-size: clamp(24px, 3.0vw, 48px); line-height: 1.12; font-weight: 900; margin: 2.6vh 0; }
+  .date-note { color: var(--blue); font-size: clamp(13px, 1.3vw, 21px); font-weight: 800; letter-spacing: .04em; }
+  .footer { margin-top: 3vh; text-align:center; }
+  .footer-line { height: 4px; background: var(--accent); border-radius: 4px; }
+  .footer-message { margin-top: 2vh; font-size: clamp(13px, 1.55vw, 25px); font-weight: 800; letter-spacing: .06em; }
+  .footer-small { margin-top: 1.2vh; font-size: clamp(9px, .8vw, 13px); color: #b4c6e1; letter-spacing: .1em; }
+  .progress { position: absolute; bottom: 0; left: 0; height: 5px; background: var(--accent); width: 0%; transition: width .1s linear; }
+  @media (max-aspect-ratio: 4/3) {
+    .slide { padding-left: 4vw; padding-right: 4vw; }
+    .header { margin-left: -4vw; margin-right: -4vw; padding-left: 4vw; padding-right: 4vw; }
+    .cards { gap: 2vw; }
+    .count-card, .date-card { min-height: 31vh; }
+  }
+  @media (max-height: 600px) {
+    .header { height: 15vh; min-height: 65px; }
+    .title { margin-bottom: .8vh; }
+    .subtitle { margin-bottom: 1.5vh; }
+    .count-card, .date-card { min-height: 30vh; padding: 1vh 1vw; }
+    .footer { margin-top: 1.5vh; }
+    .footer-message { margin-top: 1vh; }
+  }
+</style>
+</head>
+<body>
+<div class="stage" aria-label="Painel de contagem regressiva">
+  <section class="slide active" data-date="2026-11-04T00:00:00-03:00" style="--accent: var(--cyan)" aria-label="Provão Paulista 3ª série">
+    <header class="header">
+      <div class="icon" aria-hidden="true"><svg viewBox="0 0 100 100" fill="none"><path d="M8 24 Q30 15 48 28 V78 Q28 65 8 74Z" fill="#fff"/><path d="M52 28 Q72 15 92 24 V74 Q72 65 52 78Z" fill="#e6f1ff"/><path d="M50 25V82" stroke="#ffbe37" stroke-width="6"/><path d="M18 36L39 40M18 47L39 51M61 40L82 36M61 51L82 47" stroke="#1a52a0" stroke-width="3" stroke-linecap="round"/><path d="M76 10L87 15L69 47L61 51L64 41Z" fill="#ffbe37" stroke="#0c1b38" stroke-width="2"/></svg></div>
+      <div class="header-copy"><h1>PROVÃO PAULISTA 2026</h1><div class="tagline">SUA PREPARAÇÃO COMEÇA AGORA</div></div>
+    </header>
+    <div class="decor"></div>
+    <main class="content">
+      <h2 class="title">3ª SÉRIE DO ENSINO MÉDIO</h2>
+      <div class="subtitle">A reta final chegou. Organize seus estudos e venha preparado!</div>
+      <div class="cards">
+        <div class="count-card"><div class="count-label">FALTAM</div><div class="number">--</div><div class="days">DIAS</div><div class="time-units" aria-label="Horas, minutos e segundos restantes">
+            <div class="time-unit"><span class="time-value hours">00</span><span class="time-label">HORAS</span></div>
+            <div class="time-unit"><span class="time-value minutes">00</span><span class="time-label">MINUTOS</span></div>
+            <div class="time-unit"><span class="time-value seconds">00</span><span class="time-label">SEGUNDOS</span></div>
+          </div><div class="clock"></div></div>
+        <div class="date-card"><div class="date-label">DATAS DA PROVA</div><div class="date">04 e 05 de<br>NOVEMBRO</div><div class="date-note">MARQUE NO CALENDÁRIO!</div></div>
+      </div>
+    </main>
+    <footer class="footer"><div class="footer-line"></div><div class="footer-message">PREPARE-SE • CONFIE NO SEU POTENCIAL • VOCÊ CONSEGUE!</div><div class="footer-small">PAINEL INFORMATIVO • OUTUBRO / NOVEMBRO 2026</div></footer>
+    <div class="progress"></div>
+  </section>
+
+  <section class="slide" data-date="2026-11-10T00:00:00-03:00" style="--accent: var(--gold)" aria-label="Provão Paulista 2ª série">
+    <header class="header">
+      <div class="icon" aria-hidden="true"><svg viewBox="0 0 100 100" fill="none"><path d="M8 24 Q30 15 48 28 V78 Q28 65 8 74Z" fill="#fff"/><path d="M52 28 Q72 15 92 24 V74 Q72 65 52 78Z" fill="#e6f1ff"/><path d="M50 25V82" stroke="#ffbe37" stroke-width="6"/><path d="M18 36L39 40M18 47L39 51M61 40L82 36M61 51L82 47" stroke="#1a52a0" stroke-width="3" stroke-linecap="round"/><path d="M76 10L87 15L69 47L61 51L64 41Z" fill="#ffbe37" stroke="#0c1b38" stroke-width="2"/></svg></div>
+      <div class="header-copy"><h1>PROVÃO PAULISTA 2026</h1><div class="tagline">SUA PREPARAÇÃO COMEÇA AGORA</div></div>
+    </header>
+    <div class="decor"></div>
+    <main class="content">
+      <h2 class="title">2ª SÉRIE DO ENSINO MÉDIO</h2>
+      <div class="subtitle">Mantenha o foco e revise os conteúdos com tranquilidade.</div>
+      <div class="cards">
+        <div class="count-card"><div class="count-label">FALTAM</div><div class="number">--</div><div class="days">DIAS</div><div class="time-units" aria-label="Horas, minutos e segundos restantes">
+            <div class="time-unit"><span class="time-value hours">00</span><span class="time-label">HORAS</span></div>
+            <div class="time-unit"><span class="time-value minutes">00</span><span class="time-label">MINUTOS</span></div>
+            <div class="time-unit"><span class="time-value seconds">00</span><span class="time-label">SEGUNDOS</span></div>
+          </div><div class="clock"></div></div>
+        <div class="date-card"><div class="date-label">DATAS DA PROVA</div><div class="date">10 e 11 de<br>NOVEMBRO</div><div class="date-note">MARQUE NO CALENDÁRIO!</div></div>
+      </div>
+    </main>
+    <footer class="footer"><div class="footer-line"></div><div class="footer-message">PREPARE-SE • CONFIE NO SEU POTENCIAL • VOCÊ CONSEGUE!</div><div class="footer-small">PAINEL INFORMATIVO • OUTUBRO / NOVEMBRO 2026</div></footer>
+    <div class="progress"></div>
+  </section>
+
+  <section class="slide" data-date="2026-11-12T00:00:00-03:00" style="--accent: var(--green)" aria-label="Provão Paulista 1ª série">
+    <header class="header">
+      <div class="icon" aria-hidden="true"><svg viewBox="0 0 100 100" fill="none"><path d="M8 24 Q30 15 48 28 V78 Q28 65 8 74Z" fill="#fff"/><path d="M52 28 Q72 15 92 24 V74 Q72 65 52 78Z" fill="#e6f1ff"/><path d="M50 25V82" stroke="#ffbe37" stroke-width="6"/><path d="M18 36L39 40M18 47L39 51M61 40L82 36M61 51L82 47" stroke="#1a52a0" stroke-width="3" stroke-linecap="round"/><path d="M76 10L87 15L69 47L61 51L64 41Z" fill="#ffbe37" stroke="#0c1b38" stroke-width="2"/></svg></div>
+      <div class="header-copy"><h1>PROVÃO PAULISTA 2026</h1><div class="tagline">SUA PREPARAÇÃO COMEÇA AGORA</div></div>
+    </header>
+    <div class="decor"></div>
+    <main class="content">
+      <h2 class="title">1ª SÉRIE DO ENSINO MÉDIO</h2>
+      <div class="subtitle">Sua dedicação faz a diferença. Prepare-se para dar o seu melhor!</div>
+      <div class="cards">
+        <div class="count-card"><div class="count-label">FALTAM</div><div class="number">--</div><div class="days">DIAS</div><div class="time-units" aria-label="Horas, minutos e segundos restantes">
+            <div class="time-unit"><span class="time-value hours">00</span><span class="time-label">HORAS</span></div>
+            <div class="time-unit"><span class="time-value minutes">00</span><span class="time-label">MINUTOS</span></div>
+            <div class="time-unit"><span class="time-value seconds">00</span><span class="time-label">SEGUNDOS</span></div>
+          </div><div class="clock"></div></div>
+        <div class="date-card"><div class="date-label">DATAS DA PROVA</div><div class="date">12 e 13 de<br>NOVEMBRO</div><div class="date-note">MARQUE NO CALENDÁRIO!</div></div>
+      </div>
+    </main>
+    <footer class="footer"><div class="footer-line"></div><div class="footer-message">PREPARE-SE • CONFIE NO SEU POTENCIAL • VOCÊ CONSEGUE!</div><div class="footer-small">PAINEL INFORMATIVO • OUTUBRO / NOVEMBRO 2026</div></footer>
+    <div class="progress"></div>
+  </section>
+
+  <section class="slide" data-date="2026-11-08T00:00:00-03:00" style="--accent: var(--red)" aria-label="ENEM 2026">
+    <header class="header">
+      <div class="icon" aria-hidden="true"><svg viewBox="0 0 100 100" fill="none"><rect x="17" y="8" width="62" height="82" rx="7" fill="#fff"/><rect x="26" y="24" width="10" height="10" rx="2" fill="#26c3dc"/><path d="M42 29H68M26 45H36V55H26Z" stroke="#26c3dc" stroke-width="3"/><path d="M42 50H68M26 65H36V75H26Z" stroke="#26c3dc" stroke-width="3"/><path d="M42 70H63" stroke="#26c3dc" stroke-width="3"/><path d="M77 19L88 25L69 60L60 65L63 54Z" fill="#ffbe37" stroke="#0c1b38" stroke-width="2"/></svg></div>
+      <div class="header-copy"><h1>ENEM 2026</h1><div class="tagline" style="color:var(--gold)">FOCO • CONCENTRAÇÃO • CONQUISTA</div></div>
+    </header>
+    <div class="decor"></div>
+    <main class="content">
+      <h2 class="title">ENEM • 3ª SÉRIE DO ENSINO MÉDIO</h2>
+      <div class="subtitle">Duas datas importantes. Planeje-se e confie na sua preparação!</div>
+      <div class="cards">
+        <div class="count-card"><div class="count-label">FALTAM</div><div class="number">--</div><div class="days">DIAS</div><div class="time-units" aria-label="Horas, minutos e segundos restantes">
+            <div class="time-unit"><span class="time-value hours">00</span><span class="time-label">HORAS</span></div>
+            <div class="time-unit"><span class="time-value minutes">00</span><span class="time-label">MINUTOS</span></div>
+            <div class="time-unit"><span class="time-value seconds">00</span><span class="time-label">SEGUNDOS</span></div>
+          </div><div class="clock"></div></div>
+        <div class="date-card"><div class="date-label">DATAS DA PROVA</div><div class="date">08 e 15 de<br>NOVEMBRO</div><div class="date-note">MARQUE NO CALENDÁRIO!</div></div>
+      </div>
+    </main>
+    <footer class="footer"><div class="footer-line"></div><div class="footer-message">PREPARE-SE • CONFIE NO SEU POTENCIAL • VOCÊ CONSEGUE!</div><div class="footer-small">PAINEL INFORMATIVO • OUTUBRO / NOVEMBRO 2026</div></footer>
+    <div class="progress"></div>
+  </section>
+</div>
+<script>
+(() => {
+  const slides = [...document.querySelectorAll('.slide')];
+  const rotationSeconds = 12;
+  let active = 0;
+  let cycleStarted = Date.now();
+
+  function updateCountdowns() {
+    const now = Date.now();
+    slides.forEach(slide => {
+      const target = new Date(slide.dataset.date).getTime();
+      const diff = Math.max(0, target - now);
+      const totalSeconds = Math.floor(diff / 1000);
+      const days = Math.floor(totalSeconds / 86400);
+      const hours = Math.floor((totalSeconds % 86400) / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const seconds = totalSeconds % 60;
+      slide.querySelector('.number').textContent = String(days).padStart(2, '0');
+      slide.querySelector('.hours').textContent = String(hours).padStart(2,'0');
+      slide.querySelector('.minutes').textContent = String(minutes).padStart(2,'0');
+      slide.querySelector('.seconds').textContent = String(seconds).padStart(2,'0');
+      if (diff === 0) {
+        slide.querySelector('.count-label').textContent = 'É HOJE!';
+        slide.querySelector('.days').textContent = 'BOA PROVA!';
+        slide.querySelector('.time-units').style.display = 'none';
+      } else {
+        slide.querySelector('.time-units').style.display = 'flex';
+      }
+    });
+  }
+
+  function showSlide(index) {
+    slides.forEach((slide, i) => {
+      slide.classList.toggle('active', i === index);
+      slide.querySelector('.progress').style.width = '0%';
+    });
+    active = index;
+    cycleStarted = Date.now();
+  }
+
+  function rotate() {
+    const elapsed = (Date.now() - cycleStarted) / 1000;
+    const current = slides[active];
+    current.querySelector('.progress').style.width = `${Math.min(100, elapsed / rotationSeconds * 100)}%`;
+    if (elapsed >= rotationSeconds) showSlide((active + 1) % slides.length);
+  }
+
+  updateCountdowns();
+  setInterval(updateCountdowns, 1000);
+  setInterval(rotate, 100);
+})();
+</script>
+</body>
+</html>
